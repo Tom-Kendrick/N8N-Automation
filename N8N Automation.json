@@ -1,0 +1,1058 @@
+{
+  "name": "AI Reels",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -816,
+        1472
+      ],
+      "id": "54f80a4f-880a-4858-aea8-523e2ec9faaf",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Converts audio urls to list for stitching\nconst item = $input.item;\nconst textBlock = item.json.data.text;\nconst urls = textBlock.split('\\r\\n').filter(url => url.trim() !== \"\");\n\nitem.json.listFileContent = urls.map(url => `file '${url}'`).join('\\n');\n\nreturn item;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        1376
+      ],
+      "id": "683bfcec-8dd0-4bda-b569-108e415e4c29",
+      "name": "Create ListFile"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Sets up all the paths probably wont change but if needed here you are\nconst item = $input.item;\n\nitem.json.listPath = '/tmp/mylist.txt';\nitem.json.finalAudioPath = '/tmp/final_audio.mp3';\nitem.json.backgroundURL = \"https://www.dropbox.com/scl/fi/qcr4i7bfdtazhzckbly1u/Minecraft-Parkour-Gameplay-No-Copyright-Vertical.mp4?rlkey=xvgyqp0maf04wgc800lubxuu9&dl=1\";\nitem.json.backgroundVideoPath = \"/tmp/background_video.mp4\";\nitem.json.finalVideoPath = \"/tmp/final_video_output.mp4\";\nitem.json.homerImagePath = \"/tmp/Homer.png\";\nitem.json.bartImagePath = \"/tmp/Bart.png\";\n\nreturn item;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        1472
+      ],
+      "id": "0f518951-5de7-4677-9956-4320b44c4ec2",
+      "name": "Configure File Paths"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "=listFileContent",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1104,
+        1376
+      ],
+      "id": "33a7d19b-43af-4720-9d01-8b0d6a8ea8d7",
+      "name": "Convert to File (for stitching)"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/tmp/mylist.txt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        1376
+      ],
+      "id": "b75139ef-5ee6-40b2-82c1-4c662c6c5618",
+      "name": "Write Stitching File to Disk"
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -y -f concat -safe 0 -protocol_whitelist \"file,http,https,tcp,tls\" -i \"{{ $('Configure File Paths').item.json.listPath }}\" -vn -q:a 0 \"{{ $('Configure File Paths').item.json.finalAudioPath }}\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1552,
+        1376
+      ],
+      "id": "88f0f3e4-7d37-464e-86c3-2a6b7ea1ebd0",
+      "name": "Stitch Audio"
+    },
+    {
+      "parameters": {
+        "url": "https://www.dropbox.com/scl/fi/qcr4i7bfdtazhzckbly1u/Minecraft-Parkour-Gameplay-No-Copyright-Vertical.mp4?rlkey=xvgyqp0maf04wgc800lubxuu9&st=4fdeg6m3&dl=1",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        1824
+      ],
+      "id": "e25eced8-a1ce-459a-ac0a-11b2ef5a6126",
+      "name": "GET Video"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 3,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1776,
+        1616
+      ],
+      "id": "b3fb47df-1578-4275-8b70-5f2e7412b981",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $('Configure File Paths').item.json.finalAudioPath }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1776,
+        1328
+      ],
+      "id": "6195fb82-4610-4eb9-9743-d8a143a16588",
+      "name": "Read Stitched Audio"
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -y \\\n-ss {{ $('Get Random Start Point').item.json.randomStartTime }} \\\n-i \"{{ $('Merge').item.json.backgroundVideoPath }}\" \\\n-i \"{{ $('Merge').item.json.finalAudioPath }}\" \\\n-i \"{{ $('Merge').item.json.homerImagePath }}\" \\\n-i \"{{ $('Merge').item.json.bartImagePath }}\" \\\n-filter_complex \"{{ $('Merge').item.json.ffmpeg_filter_string }}\" \\\n-map \"[final_video]\" -map 1:a:0 \\\n-c:v libx264 -preset veryfast -crf 23 -c:a aac -shortest \\\n\"{{ $('Merge').item.json.finalVideoPath }}\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2224,
+        1632
+      ],
+      "id": "e4a967dc-a3f2-44f7-8a6a-4d06eedd4526",
+      "name": "Final Video Maker"
+    },
+    {
+      "parameters": {
+        "name": "=video_{{ $('Set Content Variables').item.json.id }}.mp4",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "17zI2B6ahkG_wiu_9iNIa3HY9w6Dzqfux",
+          "mode": "list",
+          "cachedResultName": "Videos",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/17zI2B6ahkG_wiu_9iNIa3HY9w6Dzqfux"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2896,
+        1632
+      ],
+      "id": "ddda2a5c-0e24-45a4-b616-b7081b832cee",
+      "name": "Upload Full Video to Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "jPYkIMR2oNNt3Kx4",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://news.crunchbase.com/feed/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -592,
+        1472
+      ],
+      "id": "1d7d392c-cd9f-432a-a8ac-e878011a0276",
+      "name": "RSS Read",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "command": "=ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{{ $json.fileName }}\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        1824
+      ],
+      "id": "1f0ffc1a-a6b0-4d04-b6b0-7acd50e2587b",
+      "name": "Get Video Length"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/tmp/background_video.mp4",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1024,
+        1824
+      ],
+      "id": "07405974-c9c9-4e48-b595-03070dff298e",
+      "name": "Write Video to Disk"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8183f3cf-4d8a-4d2d-983a-dd1d60bc2837",
+              "name": "video_length",
+              "value": "={{ $json.stdout }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1472,
+        1824
+      ],
+      "id": "7d1e0bd1-8705-4e84-a1b9-9b9fde75b3b0",
+      "name": "Set Video Length as Variable"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendAndWait",
+        "guildId": {
+          "__rl": true,
+          "value": "967563100310102037",
+          "mode": "list",
+          "cachedResultName": "Jarvis Judgement",
+          "cachedResultUrl": "https://discord.com/channels/967563100310102037"
+        },
+        "sendTo": "user",
+        "userId": {
+          "__rl": true,
+          "value": "960597486337155092",
+          "mode": "list",
+          "cachedResultName": "shrillkangaroo"
+        },
+        "message": "={{ $json.full_script }}",
+        "responseType": "freeText",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        656,
+        1472
+      ],
+      "id": "86a19254-8fcd-412b-b221-0b78a9aa1bc1",
+      "name": "Send Script to Discord, wait for Audio URLs",
+      "webhookId": "ee5a4a66-c729-4f9d-9c18-2e08ccf38b63",
+      "credentials": {
+        "discordBotApi": {
+          "id": "4rCuZzG8pGfRcG3N",
+          "name": "Discord Bot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Literally just takes the input block and formats it\nconst textBlock = $input.item.json.data.text;\nconst urls = textBlock.split('\\r\\n').filter(url => url.trim() !== \"\");\n\nreturn urls.map((url, index) => {\n  return { json: { url: url, dialogue_index: index } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        1584
+      ],
+      "id": "2f7d0973-2181-43a8-936c-41d2b25ac2b8",
+      "name": "Format Audio URLs"
+    },
+    {
+      "parameters": {
+        "executeOnce": false,
+        "command": "=ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{{ $json.url }}\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        1584
+      ],
+      "id": "4c26e426-03e9-4771-86fa-e630930b74f2",
+      "name": "Grab Audio Lengths"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Formats the audio lengths for future processing by ffmpeg\nconst durationItems = items;\nconst configJson = $('Configure File Paths').first().json;\nconst listFileJson = $('Format Audio URLs').first().json;\n\n// Just for safety\nif (!configJson) throw new Error(\"Could not find config data from 'Configure File Paths'.\");\nif (!listFileJson) throw new Error(\"Could not find 'listFileContent' from 'Format URLs'.\");\n\nlet currentTime = 0;\nconst timeline = [];\n\nlet filterString = \"[0:1]setsar=1[main];\";\nlet inputStream = '[main]';\n\nfor (let i = 0; i < durationItems.length; i++) {\n  const item = durationItems[i];\n  const duration = parseFloat(item.json.stdout);\n  if (isNaN(duration)) throw new Error(`Item ${i} has bad duration: ${item.json.stdout}`);\n\n  // This is just a temporary method for getting the current speaker that will probably never be changed\n  const character = (i % 2 === 0) ? 'Bart' : 'Homer';\n  \n  const startTime = currentTime;\n  const endTime = currentTime + duration;\n  \n  timeline.push({ character: character, start: startTime.toFixed(3), end: endTime.toFixed(3) });\n  \n  const outputStream = (i === durationItems.length - 1) ? '[final_video]' : `[v${i+1}]`;\n  // Assumes the first speaker is always Bart (it is for now because of the llm prompt)\n  if (character === 'Bart') {\n    filterString += \n      `[2:v]scale=500:-1[bart_img_${i}];` + \n      `${inputStream}[bart_img_${i}]overlay=x=W-w-5:y=H-h-50:enable='between(t,${startTime.toFixed(3)},${endTime.toFixed(3)})'${outputStream};`;\n  } else { \n    filterString += \n      `[3:v]scale=400:-1,hflip[homer_img_${i}];` + \n      `${inputStream}[homer_img_${i}]overlay=x=50:y=H-h-50:enable='between(t,${startTime.toFixed(3)},${endTime.toFixed(3)})'${outputStream};`;\n  }\n\n\n  inputStream = outputStream;\n  currentTime = endTime;\n}\n\nreturn [{\n  json: {\n    ...configJson,\n    listFileContent: listFileJson.listFileContent,\n    timeline: timeline,\n    ffmpeg_filter_string: filterString\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1552,
+        1584
+      ],
+      "id": "7d4f0875-6068-49b2-91ae-94ca718e2f85",
+      "name": "Format Audio Lengths"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "ass_file_content",
+        "options": {
+          "fileName": "={{ $json.ass_file_path }}"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2448,
+        1328
+      ],
+      "id": "3eccba4b-b1e6-4c2e-a571-9c35a1a6b837",
+      "name": "Convert Captions to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Format Captions').item.json.ass_file_path }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2672,
+        1328
+      ],
+      "id": "54eae4a9-3582-42b0-b97e-0b9fe764e473",
+      "name": "Write Captions File to Disk"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Makes the background image start from a random point so it can be reused\nconst item = $input.item;\n\nconst bgDuration = parseFloat(item.json.video_length); \n\nconst timeline = item.json.timeline;\nconst dialogueDuration = parseFloat(timeline[timeline.length - 1].end); \n\n\nconst maxStartTime = bgDuration - dialogueDuration;\n\nlet randomStartTime = 0;\nif (maxStartTime > 0) {\n  randomStartTime = Math.random() * maxStartTime;\n}\n\nitem.json.randomStartTime = randomStartTime.toFixed(3);\n\nreturn item;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        1632
+      ],
+      "id": "607a8f8f-97f7-4b51-a7b9-c4830756bb69",
+      "name": "Get Random Start Point"
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -y \\\n-i \"{{ $('Merge').item.json.finalVideoPath }}\" \\\n-filter_complex \"[0:v]ass=filename=/tmp/captions.ass[out]\" \\\n-map \"[out]\" -map 0:a \\\n-c:v libx264 -preset veryfast -c:a copy \\\n\"/tmp/FINAL_WITH_CAPTIONS.mp4\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2448,
+        1632
+      ],
+      "id": "c4869988-b178-45f3-b5b8-6d955a107ad5",
+      "name": "Add Captions to Video"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/tmp/FINAL_WITH_CAPTIONS.mp4",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2672,
+        1632
+      ],
+      "id": "e929bb22-3cb4-4bda-a78e-7d274a10db92",
+      "name": "Read Final Video from Disk"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/tmp/Homer.png",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -368,
+        1184
+      ],
+      "id": "499d6e8a-8c5e-4ffa-87ae-b538c14db743",
+      "name": "Write Homer Image to Disk"
+    },
+    {
+      "parameters": {
+        "url": "https://assets.stickpng.com/images/580b57fbd9996e24bc43bd1c.png",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -592,
+        1184
+      ],
+      "id": "37a160f0-4b59-471f-ad90-dcced6cd6d9d",
+      "name": "Get Homer Image"
+    },
+    {
+      "parameters": {
+        "url": "https://i.pinimg.com/originals/52/ba/3d/52ba3dbe77b936828b5bee7732390567.png",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        1184
+      ],
+      "id": "e8b1379c-8e24-413e-8ae4-063bc8c67b39",
+      "name": "Get Bart Image"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/tmp/Bart.png",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        208,
+        1184
+      ],
+      "id": "fdaf9a20-25a7-4173-b483-8366285f5477",
+      "name": "Write Bart Image to Disk"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are a Screenwriter for a \"Senior vs. Junior Dev\" AI News show.\n\n**Characters:**\n1. **Bart (Junior):** Hype-driven. Reacts to headlines, big numbers, and buzzwords.\n2. **Homer (Senior):** Skeptical/Grounded. Reads the details and provides the real technical or business context.\n\n**Goal:** Create a 45-55 second dialogue (approx. 130 words) based on the provided news.\n\n**Structure (Strict 5 Scenes):**\n- **Scene 1 (Bart):** Reacts to the `News Title` with extreme hype or panic.\n- **Scene 2 (Homer):** Corrects him immediately using facts from the `News Summary`.\n- **Scene 3 (Bart):** Asks a clarifying question (e.g., \"So it's not just magic?\").\n- **Scene 4 (Homer):** Delivers the core insight or \"the catch.\"\n- **Scene 5 (Bart - The Realization):** A moment of clarity. Bart accepts Homer's point of view.\n\n**Visuals:**\n- `visual_type`: \"image\" (for concepts/people), \"diagram\" (for technical concepts), or \"none\".\n- `visual_query`: Specific search term.\n\n**Meta Data Requirements:**\n- **short_title:** A punchy, click-bait title (Max 6 words). Use Emoji.\n- **youtube_description:** A short summary (1-2 sentences) + 3-5 hashtags.\n\n**Output:** A strict JSON object with this structure:\n{\n  \"scenes\": [ ... your 5 scene objects ... ],\n  \"short_title\": \"...\",\n  \"youtube_description\": \"...\"\n}",
+              "role": "model"
+            },
+            {
+              "content": "=Here is today's top story. Write the script.\n\nNews Article:\n{{ $json.content }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        1472
+      ],
+      "id": "7d55bf1d-20dc-4ad4-8705-5e98e9caa396",
+      "name": "Generate Script",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "2Eadh8QE8K8WobPG",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Formats the script input to what it actually should be\n// Gemini cant do that for us so this is needed\nconst item = $input.item;\n\nconst rawContent = item.json.content?.parts?.[0]?.text || item.json.output || item.json.text;\n\nif (!rawContent) {\n  throw new Error(\"No output found...\");\n}\n\n\nconst cleanJsonString = rawContent\n  .replace(/^```json\\s*/i, \"\") \n  .replace(/^```\\s*/i, \"\")     \n  .replace(/\\s*```$/, \"\")      \n  .trim();\n\ntry {\n\n  const parsedData = JSON.parse(cleanJsonString);\n\n  const scenes = Array.isArray(parsedData) ? parsedData : parsedData.scenes;\n  const title = parsedData.short_title || \"AI News Update 🤖\";\n  const description = parsedData.youtube_description || \"#AI #TechNews\";\n\n  if (!scenes || !Array.isArray(scenes)) {\n     throw new Error(\"Valid 'scenes' array not found in LLM output.\");\n  }\n\n\n  const scriptLines = scenes.map(scene => {\n\n    let characterName = scene.character || scene.speaker || \"Unknown\";\n    let dialogueText = scene.dialogue || scene.text || \"\";\n\n    dialogueText = dialogueText\n        .replace(/\\*/g, \"\")\n        .replace(/\\.\\.\\./g, \"\") \n        .replace(/…/g, \"\");\n    \n\n    scene.dialogue = dialogueText; \n    scene.text = dialogueText; \n\n    return `${characterName}: ${dialogueText}`;\n  });\n  \n  const fullScriptString = scriptLines.join('\\n');\n\n  item.json = {\n    scenes: scenes,       \n    full_script: fullScriptString,\n    short_title: title,\n    youtube_description: description\n  };\n\n  return item;\n\n} catch (error) {\n  throw new Error(`JSON Parse Failed. The LLM output might be malformed.\\nError: ${error.message}\\nContent: ${cleanJsonString.substring(0, 100)}...`);\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        1472
+      ],
+      "id": "38ca5a07-5aac-49fb-8a71-3801eda2d3f2",
+      "name": "Format Script"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ae8e547e-3064-4df2-bc66-4f3abde347c5",
+              "name": "content",
+              "value": "={{ $json['content:encodedSnippet'] }}",
+              "type": "string"
+            },
+            {
+              "id": "f11e554b-7c3d-4c69-872c-c42ce9c2ef0d",
+              "name": "id",
+              "value": "={{ $json.guid.split(\"=\")[1] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -368,
+        1472
+      ],
+      "id": "e608673e-3cc5-4112-b028-46f8e3f96912",
+      "name": "Set Content Variables",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Formats the captions so it can be used by ffmpeg\nconst VIDEO_WIDTH = 1080;\nconst PADDING = 100;\nconst SAFE_WIDTH = VIDEO_WIDTH - PADDING;\nconst BASE_FONT_SIZE = 120;\nconst CHAR_WIDTH_FACTOR = 0.7;\n\nfunction secondsToAss(sec) {\n  const h = Math.floor(sec / 3600);\n  const m = Math.floor((sec % 3600) / 60);\n  const s = Math.floor(sec % 60);\n  const cs = Math.floor((sec - Math.floor(sec)) * 100);\n  return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${cs.toString().padStart(2, '0')}`;\n}\n\nlet assContent = `[Script Info]\nTitle: n8n Generated Captions\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Karaoke,Arial,120,&HFFFFFF,&H00FFFF,&H000000,&H80000000,1,0,0,0,100,100,0,0,1F,10,1,5,10,10,10,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;\n\nconst words = $input.item.json.results.channels[0].alternatives[0].words;\n\n// Had to add this dumb timings fixer because deepgram doesnt want to be consistent\nlet lastEndTime = 0;\n\nfor (let i = 0; i < words.length; i++) {\n  const word = words[i];\n  \n  let wordStart = Math.max(word.start, lastEndTime);\n  let wordEnd = word.end;\n\n  if (wordEnd <= wordStart) {\n    wordEnd = wordStart + 0.1;\n  }\n  \n  lastEndTime = wordEnd;\n\n  \n  const wordText = (word.punctuated_word || word.word).toUpperCase();\n  // Resizing for long words\n  let fontSize = BASE_FONT_SIZE;\n  \n  const estimatedWidth = wordText.length * BASE_FONT_SIZE * CHAR_WIDTH_FACTOR;\n  \n  if (estimatedWidth > SAFE_WIDTH) {\n    fontSize = Math.floor(SAFE_WIDTH / (wordText.length * CHAR_WIDTH_FACTOR));\n    \n    if (fontSize < 60) fontSize = 60; \n  }\n\n  let tags = `{\\\\an5}`;\n  if (fontSize !== BASE_FONT_SIZE) {\n    tags += `{\\\\fs${fontSize}}`;\n  }\n  \n  const lineText = `${tags}${wordText}`;\n  \n  assContent += `Dialogue: 0,${secondsToAss(wordStart)},${secondsToAss(wordEnd)},Karaoke,,0,0,0,,${lineText}\\n`;\n}\n\nconst configJson = $('Configure File Paths').first().json;\n\nreturn [{\n  json: {\n    ...configJson, \n    ass_file_content: assContent,\n    ass_file_path: \"/tmp/captions.ass\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2224,
+        1328
+      ],
+      "id": "72fc75f8-c9c9-4a1a-b972-c4e79a6aa313",
+      "name": "Format Captions"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.deepgram.com/v1/listen?model=nova-3&punctuate=true&word_timestamps=true",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2000,
+        1328
+      ],
+      "id": "20260639-2500-42ec-8cd4-df2c904a9d85",
+      "name": "Deepgram Request (Nova 3)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "c7erjBGjlyZyXbI5",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Gets and Saves Character Images\n",
+        "height": 240,
+        "width": 1088
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -656,
+        1120
+      ],
+      "id": "551132bc-e7c1-47b7-98a8-82fe166fd79c",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Gets from RSS Feed and Generates Script",
+        "height": 240,
+        "width": 1248,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -656,
+        1392
+      ],
+      "id": "1e4f223e-46ee-4e5e-bede-4f95da452db9",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Gets Background Video\n",
+        "height": 240,
+        "width": 912,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        704,
+        1760
+      ],
+      "id": "6b36b450-16df-4e39-b4bc-72dceca0b01a",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {
+    "GET Video": [
+      {
+        "json": {
+          "content": {
+            "parts": [
+              {
+                "text": "Bart: Hey Homer, what's \"quantum computing\"?\nHomer: It's like our regular computers, but instead of using \"bits\" that are just on or off, it uses \"qubits.\"\nBart: Qubits? Are they like little Homer brains?\nHomer: No, boy, better! A \"qubit\" can be both on AND off at the same time. That's \"superposition.\" It's like my brain, which is both thinking about donuts and not thinking at all, until Marge asks me something.\nBart: So it's confused?\nHomer: No, smart! It lets it check all the answers at once. And then there's \"entanglement.\" That's when two qubits get linked up, so if one changes, the other instantly changes too, no matter how far apart they are.\nBart: Like if you get hungry and I suddenly want a donut too?\nHomer: Exactly! It makes these quantum computers super powerful for solving problems that would take a regular computer a million years, like figuring out how many donuts I can eat before Marge notices.\nBart: Whoa. So it's a super brain for donut math?\nHomer: Mmm... donut math..."
+              }
+            ],
+            "role": "model"
+          },
+          "finishReason": "STOP",
+          "index": 0
+        },
+        "binary": {
+          "data": {
+            "mimeType": "application/binary",
+            "fileExtension": "mp4",
+            "data": "filesystem-v2",
+            "fileName": "Minecraft Parkour Gameplay No Copyright ｜ Vertical.mp4",
+            "id": "filesystem-v2:workflows/tcFqYLGzxRNFAyHA/executions/523/binary_data/0ff93266-5d58-4dd1-b3dd-66efc30ffac3",
+            "fileSize": "413 MB"
+          }
+        }
+      }
+    ],
+    "Generate Script": [
+      {
+        "json": {
+          "content": {
+            "parts": [
+              {
+                "text": "```json\n{\n  \"scenes\": [\n    {\n      \"character\": \"Bart\",\n      \"dialogue\": \"Whoa, Homer! 20 new unicorns in one month, adding $44.5 BILLION! That's the highest valuation added in THREE years! And AI is leading the charge with companies like Reflection.AI hitting $8 billion! We're printing money out here!\",\n      \"visual_type\": \"image\",\n      \"visual_query\": \"unicorn startup with money falling\"\n    },\n    {\n      \"character\": \"Homer\",\n      \"dialogue\": \"Easy there, Bart. While it's a significant number of new private companies reaching that billion-dollar valuation, these figures stem from their latest *priced funding rounds*. And let's not forget, three companies also got acquired and three went public last month, showing the full cycle, not just growth.\",\n      \"visual_type\": \"diagram\",\n      \"visual_query\": \"startup funding lifecycle diagram\"\n    },\n    {\n      \"character\": \"Bart\",\n      \"dialogue\": \"So, it's not just some fuzzy internal accounting? This isn't just vaporware? Like, real investors put real, hard cash into these specific valuations?\",\n      \"visual_type\": \"none\",\n      \"visual_query\": \"none\"\n    },\n    {\n      \"character\": \"Homer\",\n      \"dialogue\": \"Precisely. These are valuations from actual investment rounds. However, it's important to remember they're not liquid, publicly traded assets, and the board doesn't adjust for potential investor writedowns. It's a snapshot of perceived potential and investor confidence, not guaranteed wealth for everyone involved.\",\n      \"visual_type\": \"diagram\",\n      \"visual_query\": \"private vs public company valuation comparison\"\n    },\n    {\n      \"character\": \"Bart\",\n      \"dialogue\": \"Right. So it's more like a high-stakes poker game of future potential, rather than everyone getting rich immediately. Still, an $8 billion AI company sounds pretty sweet... for the founders, anyway.\",\n      \"visual_type\": \"image\",\n      \"visual_query\": \"AI startup logo\"\n    }\n  ],\n  \"short_title\": \"Unicorn Surge! 🦄 AI Leads The Pack!\",\n  \"youtube_description\": \"October saw a massive surge in new unicorns, with 20 companies adding $44.5B in value, led by AI. But is it all hype, or is there a catch? Bart gets hyped, Homer grounds him with the reality of private market valuations. #Unicorns #AIStartups #TechNews #DevLife #Funding\"\n}\n```"
+              }
+            ],
+            "role": "model"
+          },
+          "finishReason": "STOP",
+          "index": 0
+        }
+      }
+    ],
+    "Send Script to Discord, wait for Audio URLs": [
+      {
+        "json": {
+          "data": {
+            "text": "https://storage.googleapis.com/parrot-prod-21b3c.appspot.com/videos/w_2mr4cneq.mp4?GoogleAccessId=firebase-adminsdk-f20ta%40parrot-prod-21b3c.iam.gserviceaccount.com&Expires=2120860800&Signature=qJXTOiCk2UqWOdO9nCEAahQzp2qosTN03HsyIpJoxS3hUbuo8dSFtzIu4X79uriWIF968enRluzJ8PugBNrI3PPzabqb3%2BpTvi0OTUD5A7uGolB8G9Uu9sONSQ9pVkf6%2BPi9vjhm0Lzw7W3Q2FoH9q%2FeCHAdLihX7zh3GQLEDxLFiw8%2FjjWgRYNijDBkhNEykGofW2qEp0SKkYBS83ac9JU28V%2B8gFN71otXtmqrV23oSpgww%2FOa1WaygHFZL9dY6yw0aVJvB4MIws%2F0Oa5JN4C7ZFo1JvK0gS4sIbIPr2pcZZp9F725GEsgrqlvbc7oXY3saKkiBVT%2BQsgfLn2XYg%3D%3D\r\nhttps://storage.googleapis.com/parrot-prod-21b3c.appspot.com/videos/w_jvh0b7i4.mp4?GoogleAccessId=firebase-adminsdk-f20ta%40parrot-prod-21b3c.iam.gserviceaccount.com&Expires=2120860800&Signature=n6zfWmDWAn5HYwvzTtYx0%2BnqJoVemqrKMJe7Grw%2FB2%2BnL6F7attPHpZInQ82PmDwc4Oo4TvkO0xaAvBRLWRIo%2BtEKD%2Bw5ITlf3RSAiv2DfTwPrL4PoDnOqx7PxS1Mvs0amC%2FkMF2h5PiYIeyeFlbSyTJYVWZcntUq2ZJLZWwNtnkjVK6vxMC3hRa5aBCse%2B8KHRsG%2Bzg6nDAcNphloUwD0sKszOlYcQTdn9kUlDfalL0rSVMA5J7CnHAyLpMGJigm%2FE7vZMBe0cfTUEAgVXpdxuwZIPCNAIhPFzcEB5doc%2FobCj%2FXM7zPappsPF%2Fth61y1AQghkjA0OflOaRKLSFsw%3D%3D\r\nhttps://storage.googleapis.com/parrot-prod-21b3c.appspot.com/videos/w_ah0j6y7v.mp4?GoogleAccessId=firebase-adminsdk-f20ta%40parrot-prod-21b3c.iam.gserviceaccount.com&Expires=2120860800&Signature=zBS%2FU4BAw4KHw4ds6LmdYm9i%2FIqZoQSxRbAf%2B1%2BhI3VtwhUkhiq8KUJLaYSnt9eaTDxs482oSlPqM6uhlF0u2%2FyoCyOxjS%2F1A5zRroIq8hE3DfSjcnHWRqldSWaDt5qnCzFUpcoCEdhmw6XKHRytX86Jm%2BXSZUSPhkH8F9zlVpSqinIEW1MB4%2Bc89ZyRHtHTmOBpYmAqFwh6pUverVZNJuRiaqFGjZwof2Pc4h%2BHAULq5KNJolEKMpnLHZJ80NyEY7OsVnfSIXs0za4Rl4Vv5rlBEKJGUe1AUk9V8pTzVQ0%2BzEr4TgI7tOb7%2FjypaHBLJUI5QBGJxzexQgLKR%2Fxxug%3D%3D\r\nhttps://storage.googleapis.com/parrot-prod-21b3c.appspot.com/videos/w_arjins8w.mp4?GoogleAccessId=firebase-adminsdk-f20ta%40parrot-prod-21b3c.iam.gserviceaccount.com&Expires=2120860800&Signature=g83vrzM5m3qhKckU4rJTpsy3XZB7PGSViNc2v%2BUF1JMxQNO2t6Xw4WJyxOA0dgOD4fjkGSRLh6pgp8hKl7LriSWD8F350%2FBKdo2Z0OsGEaKVSh8ZeEceoHsgqAd87HCPJrerA6m1Su8CDblzl65kFuBy%2FvHzV0Jj9ZkcItAsFtJAqkSCPEfHpGGyEdUvfvnCiSyKBiT%2BZvXR41o9WjJsL35aV%2Bdl1qWHNB0eVjb77wXWtTplRT7oCHp2zMVo1149uHv7VfRrRM4go%2BqsTEeUqcvqWID9R7FyKZA05Pi5p1OFwJhGVIFhtyPb78XbUOJs3%2F76yzn1Bx443vMqm4geoQ%3D%3D\r\nhttps://storage.googleapis.com/parrot-prod-21b3c.appspot.com/videos/w_bzgusqx0.mp4?GoogleAccessId=firebase-adminsdk-f20ta%40parrot-prod-21b3c.iam.gserviceaccount.com&Expires=2120860800&Signature=gJwsivIKFP6yJi43Wd9rrjiW%2FM1ua%2F1%2BV213at54yq%2FPxpRgltZe%2FZtVhNAlJc0w98WwadHXClALFThuGC6T60N0qqUrAQMRfBkFlKVL7t%2BK%2FOJBV1pDpHFhs7G1o0y08z6JrTM%2Bk%2FTjaAa4g2NU14vBg25pHi54NL4TZB4t3w8zz4VG7OzITy%2Bx41oiI1qLqm%2FfEfD6oRB1G86Z7xE1olW0V%2BPyGmpcF8Y345T23C%2FkcbB7aYHZsjTJegh1URPElVBrnwpW6d%2BEAfPC02qzcjGhTHg7ts9myOeyNg3hAg8Bj9vBhRj2Mqxdrm3wUOZuZgUp9NmrcSSYehiC%2FwkB%2FQ%3D%3D"
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "GET Video",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Homer Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configure File Paths": {
+      "main": [
+        [
+          {
+            "node": "Format Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create ListFile": {
+      "main": [
+        [
+          {
+            "node": "Convert to File (for stitching)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File (for stitching)": {
+      "main": [
+        [
+          {
+            "node": "Write Stitching File to Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Stitching File to Disk": {
+      "main": [
+        [
+          {
+            "node": "Stitch Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stitch Audio": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Stitched Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Video": {
+      "main": [
+        [
+          {
+            "node": "Write Video to Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Get Random Start Point",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Stitched Audio": {
+      "main": [
+        [
+          {
+            "node": "Deepgram Request (Nova 3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Video Maker": {
+      "main": [
+        [
+          {
+            "node": "Add Captions to Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Full Video to Drive": {
+      "main": [
+        []
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Set Content Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Video Length": {
+      "main": [
+        [
+          {
+            "node": "Set Video Length as Variable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Video to Disk": {
+      "main": [
+        [
+          {
+            "node": "Get Video Length",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Video Length as Variable": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Send Script to Discord, wait for Audio URLs": {
+      "main": [
+        [
+          {
+            "node": "Format Audio URLs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create ListFile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Audio URLs": {
+      "main": [
+        [
+          {
+            "node": "Grab Audio Lengths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Grab Audio Lengths": {
+      "main": [
+        [
+          {
+            "node": "Format Audio Lengths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Audio Lengths": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Convert Captions to File": {
+      "main": [
+        [
+          {
+            "node": "Write Captions File to Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Captions File to Disk": {
+      "main": [
+        []
+      ]
+    },
+    "Get Random Start Point": {
+      "main": [
+        [
+          {
+            "node": "Final Video Maker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Captions to Video": {
+      "main": [
+        [
+          {
+            "node": "Read Final Video from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Final Video from Disk": {
+      "main": [
+        [
+          {
+            "node": "Upload Full Video to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Homer Image to Disk": {
+      "main": [
+        [
+          {
+            "node": "Get Bart Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Homer Image": {
+      "main": [
+        [
+          {
+            "node": "Write Homer Image to Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Bart Image": {
+      "main": [
+        [
+          {
+            "node": "Write Bart Image to Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Script": {
+      "main": [
+        [
+          {
+            "node": "Configure File Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Script": {
+      "main": [
+        [
+          {
+            "node": "Send Script to Discord, wait for Audio URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Content Variables": {
+      "main": [
+        [
+          {
+            "node": "Generate Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Captions": {
+      "main": [
+        [
+          {
+            "node": "Convert Captions to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deepgram Request (Nova 3)": {
+      "main": [
+        [
+          {
+            "node": "Format Captions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c817e853-df62-44d6-9156-076db73fd4cf",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a15b47a70c64d659a8c910f9f9e0a2b07c3a86b68383952da3b92236431424ff"
+  },
+  "id": "ShsexftnuOBEkgZ2",
+  "tags": []
+}
