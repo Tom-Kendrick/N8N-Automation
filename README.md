@@ -63,6 +63,16 @@ To circumvent the lack of free, high-quality character voice tools, the project 
 
 ---
 
-## 🚧 Status: Chaotic & Fun
+## Status: Chaotic & Fun
 
-This project is purely for experimentation. It is maintained sporadically and serves as a testing ground for integrating new APIs and finding the most roundabout, fun ways to automate media production!
+This project is purely for experimentation. It is maintained sporadically and serves as a testing ground for integrating new APIs and finding the most roundabout, fun ways to automate media production.
+
+## Follow the Chaos
+
+See the final results of this automated pipeline (and the occasional human error) on the platforms below.
+
+| Platform | Handle |
+| :--- | :--- |
+| **YouTube** | [@HomerKnowsWhy](https://www.youtube.com/@HomerKnowsWhy) |
+| **Instagram** | [@homerknowswhy](https://www.instagram.com/homerknowswhy/) |
+| **TikTok** | [@homerknowswhy](https://www.tiktok.com/@homerknowswhy) |
