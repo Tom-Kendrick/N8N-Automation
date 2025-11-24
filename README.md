@@ -1,6 +1,6 @@
-# AI Video Factory: The Simpsons Edition
+# AI Video Factory: Cartoon Edition
 
-> A chaotic, fun **n8n workflow** that automatically turns tech news headlines into short, vertically-oriented videos featuring a dialogue between **Bart (Junior Dev)** and **Homer (Senior Dev)**.
+> A chaotic, fun **n8n workflow** that automatically turns tech news headlines into short, vertically-oriented videos featuring a dialogue between a **Junior Dev** and a **Senior Dev**.
 
 This project is a personal sandbox for connecting multiple AI, media processing, and DevOps tools to create a fully autonomous content pipeline. It's built primarily to see how far you can push a low-code platform like n8n for complex media production tasks. 
 
@@ -16,8 +16,8 @@ The workflow orchestrates several distinct steps, tying together APIs, shell com
     * Pulls the latest tech news summary from an **RSS feed**.
 
 2.  **Script Generation (Gemini API):**
-    * The news is sent to the **Gemini API** with a strict prompt defining the persona of **Bart** (Hype-driven, buzzword enthusiast) and **Homer** (Skeptical, grounded engineer).
-    * Gemini generates a five-scene dialogue, a clickbait title, and a YouTube description, all constrained to a single JSON object.
+    * The news is sent to the **Gemini API** with a strict prompt defining the persona of a **Junior** (Hype-driven, buzzword enthusiast) and a **Senior** (Skeptical, grounded engineer).
+    * Gemini generates a five-scene dialogue, a clickbait title, and description, all constrained to a single JSON object.
 
 3.  **The Human Loop (Audio)**:
     * The raw script is sent to a private **Discord** channel.
@@ -36,7 +36,7 @@ The workflow orchestrates several distinct steps, tying together APIs, shell com
 6.  **Final Video Assembly:**
     * **FFmpeg** runs the main video assembly command, which:
         * Trims the background video from a **randomized starting point** (to avoid repetition).
-        * Overlays the **Homer image** only when Homer is speaking, and the **Bart image** only when Bart is speaking, using the timing data from the filter string.
+        * Overlays the **Senior image** only when the Senior is speaking, and the **Junior image** only when the Junior is speaking, using the timing data from the filter string.
         * Bakes the generated `.ass` captions into the final video stream.
 
 7.  **Delivery:**
@@ -73,6 +73,4 @@ See the final results of this automated pipeline (and the occasional human error
 
 | Platform | Handle |
 | :--- | :--- |
-| **YouTube** | [@HomerKnowsWhy](https://www.youtube.com/@HomerKnowsWhy) |
-| **Instagram** | [@homerknowswhy](https://www.instagram.com/homerknowswhy/) |
-| **TikTok** | [@homerknowswhy](https://www.tiktok.com/@homerknowswhy) |
+| **Instagram** | [@PeterKnowsWhy](https://www.instagram.com/peterknowswhy/) |
