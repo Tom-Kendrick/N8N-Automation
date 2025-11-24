@@ -4,7 +4,7 @@
 
 This project is a personal sandbox for connecting multiple AI, media processing, and DevOps tools to create a fully autonomous content pipeline. It's built primarily to see how far you can push a low-code platform like n8n for complex media production tasks. 
 
-This project was built under strict student budget constraints, using free and low-cost solutions, which occasionally leads to a "clanky" feel. To keep costs down, the core infrastructure, including the n8n instance and the Gemini API access, was deployed using available student plans (like DigitalOcean). A "human-in-the-loop" step via Discord became necessary because most free audio generation tools couldn't provide the specific "famous" character voices (like Homer and Bart) required for the concept. This functionality, currently achieved using Parrot AI, is a key point of flexibility, as the characters can easily be adapted. A detailed explanation of how this Discord-based "human-in-the-loop" step operates follows later.
+This project was built under strict student budget constraints, using free and low-cost solutions, which occasionally leads to a "clanky" feel. To keep costs down, the core infrastructure, including the n8n instance and the Gemini API access, was deployed using available student plans (like DigitalOcean). A "human-in-the-loop" step via Discord became necessary because most free audio generation tools couldn't provide the specific "famous" character voices (like Homer and Bart or Peter and Stewie) required for the concept. This functionality, currently achieved using Parrot AI, is a key point of flexibility, as the characters can easily be adapted. A detailed explanation of how this Discord-based "human-in-the-loop" step operates follows later.
 
 ---
 
@@ -24,7 +24,7 @@ The workflow orchestrates several distinct steps, tying together APIs, shell com
     * The workflow pauses, waiting for a reply containing the five individual Text-to-Speech audio file URLs (acting as a "human in the loop" to select voices/style).
 
 4.  **Media Processing (FFmpeg/FFprobe):**
-    * Downloads a vertical **background video** (e.g., gameplay footage) and character PNGs for Homer and Bart.
+    * Downloads a vertical **background video** (e.g., gameplay footage) and character PNGs for the Senior and Junior.
     * The five audio files are stitched into one seamless MP3 track using **FFmpeg**'s `concat` command.
     * Each individual audio clip's length is measured using **FFprobe**. This data is crucial for the next step.
 
@@ -46,7 +46,7 @@ The workflow orchestrates several distinct steps, tying together APIs, shell com
 
 ## Huamn In The Loop (Detailed)
 
-To circumvent the lack of free, high-quality character voice tools, the project incorporates a "human-in-the-loop" step utilising Parrot AI for generating the Homer and Bart voices. This process is initiated by the workflow sending the entire script to the user's personal Discord account via a dedicated bot, which includes a link to a form for submitting the final audio files. To increase efficiency, the manual process of copying the script and then the resulting audio URL was mostly automated using a Tampermonkey script. This automation streamlines the generation process, requiring the human operator only to validate the quality of the generated audio at each step and regenerate it if necessary.
+To circumvent the lack of free, high-quality character voice tools, the project incorporates a "human-in-the-loop" step utilising Parrot AI for generating the Senior and Junior voices. This process is initiated by the workflow sending the entire script to the user's personal Discord account via a dedicated bot, which includes a link to a form for submitting the final audio files. To increase efficiency, the manual process of copying the script and then the resulting audio URL was mostly automated using a Tampermonkey script. This automation streamlines the generation process, requiring the human operator only to validate the quality of the generated audio at each step and regenerate it if necessary.
 
 ---
 
